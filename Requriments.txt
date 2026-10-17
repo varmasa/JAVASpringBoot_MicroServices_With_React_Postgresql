@@ -1,0 +1,6 @@
+NodeJS -> For Frontend (Presentation layer/App layer)
+
+Java21 -> For Backend (Bussiness layer)
+Maven  -> Build Tool
+
+PostgreSQL -> DB (Database layer)
