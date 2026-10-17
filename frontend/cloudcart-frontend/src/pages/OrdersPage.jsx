@@ -1,8 +1,154 @@
-import { PackageSearch, Truck } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
-const money = value => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { getMyOrders } from '../api/orderApi.js';
+
+const money = (value) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+
 export default function OrdersPage() {
-  const orders = JSON.parse(localStorage.getItem('cloudcart-demo-orders') || '[]');
-  return <main className="page-shell container"><div className="page-title"><div className="eyebrow">YOUR ACCOUNT</div><h1>My orders</h1><p>Order history for this browser's demo checkout.</p></div>{orders.length ? <div className="orders-list">{orders.map(order => <article className="order-card" key={order.id}><div className="order-card-top"><div><span className="muted-label">ORDER NUMBER</span><h3>{order.id}</h3></div><span className="status-pill"><span />{order.status}</span></div><div className="order-card-bottom"><div><span className="muted-label">ITEMS</span><p>{order.items.map(item => `${item.name} × ${item.quantity}`).join(', ')}</p></div><div><span className="muted-label">TOTAL</span><strong>{money(order.total)}</strong></div><div className="order-tracking"><Truck size={17} /> Tracking will be available after Shipping Service integration.</div></div></article>)}</div> : <div className="empty-cart"><div className="empty-icon"><PackageSearch size={30} /></div><h2>No orders yet</h2><p>Your placed demo orders will appear here.</p><Link className="primary-button" to="/">Explore products <span>→</span></Link></div>}</main>;
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadOrders() {
+      try {
+        const data = await getMyOrders();
+
+        if (active) {
+          setOrders(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        if (active) {
+          setError(err.message || 'Unable to load orders.');
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadOrders();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <main className="page-shell orders-page">
+        <div className="orders-heading">
+          <span className="checkout-eyebrow">YOUR ACCOUNT</span>
+          <h1>My Orders</h1>
+          <p>Loading your order history...</p>
+        </div>
+
+        <div className="order-loading">
+          <span className="order-loading-spinner" aria-hidden="true" />
+          Loading your orders...
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="page-shell orders-page">
+      <div className="orders-heading">
+        <span className="checkout-eyebrow">YOUR ACCOUNT</span>
+        <h1>My Orders</h1>
+        <p>Keep track of your purchases and order details.</p>
+      </div>
+
+      {error && (
+        <div role="alert" className="checkout-error">
+          {error}
+        </div>
+      )}
+
+      {!error && orders.length === 0 && (
+        <section className="checkout-card order-empty">
+          <div className="checkout-empty-icon" aria-hidden="true">
+            📦
+          </div>
+          <h2>No orders yet</h2>
+          <p>
+            You haven't placed any orders yet. Your purchases will appear
+            here.
+          </p>
+
+          <Link to="/" className="primary-button checkout-action-link">
+            Start shopping
+          </Link>
+        </section>
+      )}
+
+      {!error && orders.length > 0 && (
+        <div className="orders-list">
+          {orders.map((order) => (
+            <article className="order-history-card" key={order.orderId}>
+              <div className="order-history-top">
+                <div>
+                  <span className="order-card-label">ORDER NUMBER</span>
+                  <h2>#{order.orderId}</h2>
+                  <p className="order-card-date">
+                    {order.createdAt
+                      ? new Date(order.createdAt).toLocaleString()
+                      : 'Date unavailable'}
+                  </p>
+                </div>
+
+                <span
+                  className={`order-status-badge status-${String(
+                    order.status || 'unknown'
+                  ).toLowerCase()}`}
+                >
+                  {order.status || 'Unknown'}
+                </span>
+              </div>
+
+              <div className="order-history-items">
+                {(order.items || []).map((item, index) => (
+                  <div
+                    className="order-history-item"
+                    key={`${item.productId}-${index}`}
+                  >
+                    <span>
+                      {item.productName} <span aria-hidden="true">×</span>{' '}
+                      {item.quantity}
+                    </span>
+                    <span>{money(item.subtotal)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="order-history-bottom">
+                <div>
+                  <span className="order-card-label">ORDER TOTAL</span>
+                  <p className="order-history-total">
+                    {money(order.totalAmount)}
+                  </p>
+                </div>
+
+                <Link
+                  to={`/order-success/${order.orderId}`}
+                  className="order-history-link"
+                >
+                  View details <span aria-hidden="true">→</span>
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </main>
+  );
 }

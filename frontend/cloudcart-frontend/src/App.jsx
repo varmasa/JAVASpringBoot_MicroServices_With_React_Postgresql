@@ -53,6 +53,13 @@ export default function App() {
             </ProtectedPage>
           }
         />
+
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route
+            path="/order-success/:orderId"
+            element={<OrderSuccessPage />}
+        />
           
         <Route
           path="/admin"
