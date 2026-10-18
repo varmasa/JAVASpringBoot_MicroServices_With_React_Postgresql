@@ -60,7 +60,12 @@ export function getReviewSummary(productId) {
   return request(`${REVIEW_API}/product/${productId}/summary`);
 }
 
-export function createReview({ productId, rating, comment }) {
+export function createReview({
+  productId,
+  reviewerName,
+  rating,
+  comment,
+}) {
   if (!getToken()) {
     throw new Error("Please log in to submit a review.");
   }
@@ -69,6 +74,7 @@ export function createReview({ productId, rating, comment }) {
     method: "POST",
     body: JSON.stringify({
       productId,
+      reviewerName,
       rating,
       comment,
     }),

@@ -1,19 +1,19 @@
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createReview,
   getProductReviews,
   getReviewSummary,
 } from "../services/reviewApi";
-
 import "./ReviewSection.css";
 
-export default function ReviewSection({ productId }) {
+export default function ReviewSection({ productId, onReviewsChanged }) {
   const [reviews, setReviews] = useState([]);
   const [summary, setSummary] = useState({
     averageRating: 0,
     totalReviews: 0,
   });
+  const [reviewerName, setReviewerName] = useState("");
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(true);
@@ -21,7 +21,7 @@ export default function ReviewSection({ productId }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  async function loadReviews() {
+  const loadReviews = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -31,27 +31,36 @@ export default function ReviewSection({ productId }) {
         getReviewSummary(productId),
       ]);
 
-      setReviews(reviewData);
-      setSummary(summaryData);
+      setReviews(Array.isArray(reviewData) ? reviewData : []);
+      setSummary({
+        averageRating: Number(summaryData?.averageRating) || 0,
+        totalReviews: Number(
+          summaryData?.totalReviews ?? summaryData?.reviewCount
+        ) || 0,
+      });
     } catch (err) {
       setError(err.message || "Unable to load reviews.");
     } finally {
       setLoading(false);
     }
-  }
+  }, [productId]);
 
   useEffect(() => {
     loadReviews();
-  }, [productId]);
+  }, [loadReviews]);
 
   async function handleSubmit(event) {
     event.preventDefault();
-
     setError("");
     setMessage("");
 
     if (!localStorage.getItem("cloudcart_token")) {
       setError("Please log in before submitting a review.");
+      return;
+    }
+
+    if (!reviewerName.trim()) {
+      setError("Please enter your display name.");
       return;
     }
 
@@ -65,6 +74,7 @@ export default function ReviewSection({ productId }) {
 
       await createReview({
         productId,
+        reviewerName: reviewerName.trim(),
         rating,
         comment: comment.trim(),
       });
@@ -74,10 +84,9 @@ export default function ReviewSection({ productId }) {
       setMessage("Your review was submitted successfully.");
 
       await loadReviews();
+      onReviewsChanged?.();
     } catch (err) {
-      setError(
-        err.message || "Unable to submit your review."
-      );
+      setError(err.message || "Unable to submit your review.");
     } finally {
       setSubmitting(false);
     }
@@ -88,26 +97,42 @@ export default function ReviewSection({ productId }) {
       <h3>Customer Reviews</h3>
 
       <div className="review-summary">
-        <span className="review-average">
-          ★ {Number(summary.averageRating || 0).toFixed(1)}
-        </span>
-
-        <span>
-          {summary.totalReviews || 0} review(s)
-        </span>
+        {summary.totalReviews > 0 ? (
+          <>
+            <span className="review-average">
+              ★ {summary.averageRating.toFixed(1)}
+            </span>
+            <span>
+              ({summary.totalReviews}{" "}
+              {summary.totalReviews === 1 ? "review" : "reviews"})
+            </span>
+          </>
+        ) : (
+          <span>No ratings yet</span>
+        )}
       </div>
 
       <form className="review-form" onSubmit={handleSubmit}>
+        <label htmlFor={`reviewer-${productId}`}>
+          Your name
+        </label>
+        <input
+          id={`reviewer-${productId}`}
+          value={reviewerName}
+          onChange={(event) => setReviewerName(event.target.value)}
+          placeholder="Enter your display name"
+          maxLength={100}
+          required
+          disabled={submitting}
+        />
+
         <label htmlFor={`rating-${productId}`}>
           Your rating
         </label>
-
         <select
           id={`rating-${productId}`}
           value={rating}
-          onChange={(event) =>
-            setRating(Number(event.target.value))
-          }
+          onChange={(event) => setRating(Number(event.target.value))}
           disabled={submitting}
         >
           {[5, 4, 3, 2, 1].map((value) => (
@@ -120,7 +145,6 @@ export default function ReviewSection({ productId }) {
         <label htmlFor={`comment-${productId}`}>
           Your comment
         </label>
-
         <textarea
           id={`comment-${productId}`}
           value={comment}
@@ -138,15 +162,11 @@ export default function ReviewSection({ productId }) {
       </form>
 
       {error && (
-        <p className="review-error" role="alert">
-          {error}
-        </p>
+        <p className="review-error" role="alert">{error}</p>
       )}
 
       {message && (
-        <p className="review-success" role="status">
-          {message}
-        </p>
+        <p className="review-success" role="status">{message}</p>
       )}
 
       <div className="review-list">
@@ -155,23 +175,24 @@ export default function ReviewSection({ productId }) {
         {loading ? (
           <p>Loading reviews...</p>
         ) : reviews.length === 0 ? (
-          <p>
-            No reviews yet. Be the first to review this product!
-          </p>
+          <p>No reviews yet. Be the first to review this product!</p>
         ) : (
           reviews.map((review) => (
             <article className="review-item" key={review.id}>
-              <div className="review-item-heading">
-                <strong>
+              <div className="reviewer-details">
+                <strong className="reviewer-name">
+                  {review.reviewerName || "Customer"}
+                </strong>
+                <span className="reviewer-stars" aria-label={`${review.rating} out of 5 stars`}>
                   {"★".repeat(review.rating)}
                   {"☆".repeat(5 - review.rating)}
-                </strong>
+                </span>
+              </div>
 
+              <div className="review-item-heading">
                 <span>
                   {review.createdAt
-                    ? new Date(
-                        review.createdAt
-                      ).toLocaleDateString()
+                    ? new Date(review.createdAt).toLocaleDateString()
                     : ""}
                 </span>
               </div>

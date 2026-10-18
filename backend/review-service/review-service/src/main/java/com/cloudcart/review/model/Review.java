@@ -32,6 +32,11 @@ public class Review {
     @Column(name = "user_email", nullable = false)
     private String userEmail;
 
+    @NotBlank
+    @Size(max = 100)
+    @Column(name = "reviewer_name", nullable = false, length = 100)
+    private String reviewerName;
+
     @NotNull
     @Min(1)
     @Max(5)
@@ -64,8 +69,6 @@ public class Review {
         updatedAt = LocalDateTime.now();
     }
 
-    // Getters
-
     public Long getId() {
         return id;
     }
@@ -76,6 +79,10 @@ public class Review {
 
     public String getUserEmail() {
         return userEmail;
+    }
+
+    public String getReviewerName() {
+        return reviewerName;
     }
 
     public Integer getRating() {
@@ -94,8 +101,6 @@ public class Review {
         return updatedAt;
     }
 
-    // Setters
-
     public void setId(Long id) {
         this.id = id;
     }
@@ -106,6 +111,10 @@ public class Review {
 
     public void setUserEmail(String userEmail) {
         this.userEmail = userEmail;
+    }
+
+    public void setReviewerName(String reviewerName) {
+        this.reviewerName = reviewerName;
     }
 
     public void setRating(Integer rating) {

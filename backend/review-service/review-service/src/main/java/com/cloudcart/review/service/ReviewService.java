@@ -23,7 +23,6 @@ public class ReviewService {
         this.reviewRepository = reviewRepository;
     }
 
-    // Create a new review
     @Transactional
     public ReviewResponse createReview(
             String userEmail,
@@ -41,22 +40,21 @@ public class ReviewService {
 
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "You have already reviewed this product. Each user can submit only one review per product."
+                    "You have already reviewed this product. "
+                    + "Each user can submit only one review per product."
             );
         }
 
         Review review = new Review();
         review.setProductId(request.getProductId());
-        review.setUserEmail(userEmail);
+        review.setUserEmail(userEmail.trim().toLowerCase());
+        review.setReviewerName(request.getReviewerName().trim());
         review.setRating(request.getRating());
-        review.setComment(request.getComment());
+        review.setComment(request.getComment().trim());
 
-        Review savedReview = reviewRepository.save(review);
-
-        return toResponse(savedReview);
+        return toResponse(reviewRepository.save(review));
     }
 
-    // Get all reviews for a product
     @Transactional(readOnly = true)
     public List<ReviewResponse> getReviewsByProduct(Long productId) {
         return reviewRepository
@@ -66,33 +64,35 @@ public class ReviewService {
                 .toList();
     }
 
-    // Get average rating and total review count
     @Transactional(readOnly = true)
     public ReviewSummary getReviewSummary(Long productId) {
 
         Double average = reviewRepository
                 .findAverageRatingByProductId(productId);
 
-        Long count = reviewRepository.countByProductId(productId);
+        long count = reviewRepository.countByProductId(productId);
 
         double averageRating = average == null
                 ? 0.0
                 : Math.round(average * 100.0) / 100.0;
 
-        return new ReviewSummary(productId, averageRating, count);
+        return new ReviewSummary(
+                productId,
+                averageRating,
+                count
+        );
     }
 
-    // Get reviews belonging to the logged-in user
     @Transactional(readOnly = true)
     public List<ReviewResponse> getMyReviews(String userEmail) {
         return reviewRepository
-                .findByUserEmailOrderByCreatedAtDesc(userEmail)
+                .findByUserEmailOrderByCreatedAtDesc(
+                        userEmail.trim().toLowerCase())
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    // Update an existing review
     @Transactional
     public ReviewResponse updateReview(
             Long reviewId,
@@ -111,19 +111,17 @@ public class ReviewService {
         }
 
         review.setRating(request.getRating());
-        review.setComment(request.getComment());
+        review.setComment(request.getComment().trim());
 
+        // Keep the original reviewer name on updates.
         return toResponse(reviewRepository.save(review));
     }
 
-    // Delete an existing review
     @Transactional
     public void deleteReview(Long reviewId, String userEmail) {
 
         Review review = getReviewOrThrow(reviewId);
-
         verifyOwner(review, userEmail);
-
         reviewRepository.delete(review);
     }
 
@@ -135,12 +133,12 @@ public class ReviewService {
                 ));
     }
 
-    // Users can modify only their own reviews
     private void verifyOwner(Review review, String userEmail) {
 
         if (review.getUserEmail() == null
                 || userEmail == null
-                || !review.getUserEmail().equalsIgnoreCase(userEmail)) {
+                || !review.getUserEmail().equalsIgnoreCase(
+                        userEmail.trim())) {
 
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
@@ -154,6 +152,7 @@ public class ReviewService {
                 review.getId(),
                 review.getProductId(),
                 review.getUserEmail(),
+                review.getReviewerName(),
                 review.getRating(),
                 review.getComment(),
                 review.getCreatedAt(),

@@ -8,18 +8,17 @@ public class ReviewResponse {
     private Long id;
     private Long productId;
     private String userEmail;
+    private String reviewerName;
     private Integer rating;
     private String comment;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public ReviewResponse() {
-    }
-
     public ReviewResponse(
             Long id,
             Long productId,
             String userEmail,
+            String reviewerName,
             Integer rating,
             String comment,
             LocalDateTime createdAt,
@@ -28,6 +27,7 @@ public class ReviewResponse {
         this.id = id;
         this.productId = productId;
         this.userEmail = userEmail;
+        this.reviewerName = reviewerName;
         this.rating = rating;
         this.comment = comment;
         this.createdAt = createdAt;
@@ -44,6 +44,10 @@ public class ReviewResponse {
 
     public String getUserEmail() {
         return userEmail;
+    }
+
+    public String getReviewerName() {
+        return reviewerName;
     }
 
     public Integer getRating() {
