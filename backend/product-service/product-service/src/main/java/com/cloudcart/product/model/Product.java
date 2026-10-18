@@ -1,7 +1,9 @@
+
 package com.cloudcart.product.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+
 import java.math.BigDecimal;
 
 @Entity
@@ -27,21 +29,69 @@ public class Product {
     @Column(nullable = false)
     private int stock;
 
-    public Product() {}
+    @Column(name = "image_url", length = 2048)
+    private String imageUrl;
 
-    public Long getId() { return id; }
-    public String getName() { return name; }
-    public String getDescription() { return description; }
-    public BigDecimal getPrice() { return price; }
-    public int getStock() { return stock; }
+    private String category;
 
-    public void setId(Long id) { this.id = id; }
-    public void setName(String name) { this.name = name; }
+    public Product() {
+    }
+
+    // Getters
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public int getStock() {
+        return stock;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    // Setters
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public void setDescription(String description) {
         this.description = description;
     }
+
     public void setPrice(BigDecimal price) {
         this.price = price;
     }
-    public void setStock(int stock) { this.stock = stock; }
+
+    public void setStock(int stock) {
+        this.stock = stock;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
 }

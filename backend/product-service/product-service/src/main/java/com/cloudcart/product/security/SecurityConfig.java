@@ -34,13 +34,28 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/products/**")
-                    .hasRole("ADMIN")
-                .anyRequest().authenticated()
-            )
+            
+.authorizeHttpRequests(auth -> auth
+    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+    // Public product browsing
+    .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+
+    // Only ADMIN can create products
+    .requestMatchers(HttpMethod.POST, "/api/products/**")
+        .hasRole("ADMIN")
+
+    // Only ADMIN can update products
+    .requestMatchers(HttpMethod.PUT, "/api/products/**")
+        .hasRole("ADMIN")
+
+    // Only ADMIN can delete products
+    .requestMatchers(HttpMethod.DELETE, "/api/products/**")
+        .hasRole("ADMIN")
+
+    .anyRequest().authenticated()
+)
+
             .addFilterBefore(
                 jwtFilter,
                 UsernamePasswordAuthenticationFilter.class

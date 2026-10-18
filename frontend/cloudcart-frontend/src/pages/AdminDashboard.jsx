@@ -1,540 +1,336 @@
+import { useEffect, useState } from 'react';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Package,
-  PackagePlus,
-  Boxes,
-  Search,
-  RefreshCw,
-  Plus,
-  CheckCircle2,
-  AlertCircle,
-  IndianRupee,
-  ArrowUpRight,
-  Warehouse,
-} from "lucide-react";
+const API_URL = 'http://localhost:8081/api/products';
 
-const API_URL = "http://localhost:8081/api/products";
-const LOW_STOCK_LIMIT = 5;
-
-const EMPTY_FORM = {
-  name: "",
-  description: "",
-  price: "",
-  stock: "",
+const emptyProduct = {
+  name: '',
+  description: '',
+  price: '',
+  imageUrl: '',
+  category: '',
+  stock: '',
 };
 
-function getErrorMessage(error) {
-  return error instanceof Error
-    ? error.message
-    : "Something went wrong. Please try again.";
+function getToken() {
+  return localStorage.getItem('cloudcart_token');
 }
 
-function formatPrice(value) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(Number(value) || 0);
+async function apiRequest(path = '', options = {}) {
+  const token = getToken();
+  if (!token) throw new Error('Please log in as an admin first.');
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...options.headers,
+    },
+  });
+
+  const text = await response.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.message || data?.error || `Request failed with status ${response.status}`);
+  }
+  return data;
+}
+
+function getProductImage(product) {
+  return product.imageUrl || product.image_url || '';
 }
 
 export default function AdminDashboard() {
-  const [form, setForm] = useState(EMPTY_FORM);
   const [products, setProducts] = useState([]);
-  const [search, setSearch] = useState("");
-  const [message, setMessage] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
+  const [form, setForm] = useState(emptyProduct);
+  const [editingId, setEditingId] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [failedImages, setFailedImages] = useState({});
 
-  const loadProducts = useCallback(async () => {
-    setFetching(true);
-
-    try {
-      const response = await fetch(API_URL);
-
-      if (!response.ok) {
-        throw new Error(
-          `Could not load products (HTTP ${response.status}).`
-        );
-      }
-
-      const data = await response.json();
-
-      if (!Array.isArray(data)) {
-        throw new Error("Unexpected product data received from the server.");
-      }
-
-      setProducts(data);
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: getErrorMessage(error),
-      });
-    } finally {
-      setFetching(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
-
-  const filteredProducts = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    if (!query) return products;
-
-    return products.filter((product) =>
-      [product.name, product.description, String(product.id)]
-        .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(query))
-    );
-  }, [products, search]);
-
-  const lowStockCount = products.filter(
-    (product) => Number(product.stock) <= LOW_STOCK_LIMIT
-  ).length;
-
-  function handleChange(event) {
-    const { name, value } = event.target;
-
-    setForm((current) => ({
-      ...current,
-      [name]: value,
-    }));
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setMessage(null);
-
-    const token = localStorage.getItem("cloudcart_token");
-    const name = form.name.trim();
-    const price = Number(form.price);
-    const stock = Number(form.stock);
-
-    if (!token) {
-      setMessage({
-        type: "error",
-        text: "Please log in again before adding a product.",
-      });
-      return;
-    }
-
-    if (!name || !Number.isFinite(price) || price < 0.01) {
-      setMessage({
-        type: "error",
-        text: "Enter a product name and a price greater than zero.",
-      });
-      return;
-    }
-
-    if (
-      form.stock.trim() === "" ||
-      !Number.isSafeInteger(stock) ||
-      stock < 0
-    ) {
-      setMessage({
-        type: "error",
-        text: "Stock must be a non-negative whole number.",
-      });
-      return;
-    }
-
+  async function loadProducts() {
     setLoading(true);
-
+    setError('');
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name,
-          description: form.description.trim(),
-          price,
-          stock,
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error(
-            "Your session has expired. Please sign in again."
-          );
-        }
-
-        if (response.status === 403) {
-          throw new Error(
-            "Admin access denied. Verify your ADMIN role and sign in again."
-          );
-        }
-
-        throw new Error(
-          `Product creation failed (HTTP ${response.status}).`
-        );
-      }
-
-      const product = await response.json();
-
-      setForm(EMPTY_FORM);
-      setMessage({
-        type: "success",
-        text: `"${product.name || name}" was added successfully.`,
-      });
-
-      await loadProducts();
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: getErrorMessage(error),
-      });
+      const data = await apiRequest();
+      setProducts(Array.isArray(data) ? data : []);
+      setFailedImages({});
+    } catch (err) {
+      setError(err.message || 'Unable to load products.');
     } finally {
       setLoading(false);
     }
   }
 
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  function openAddForm() {
+    setEditingId(null);
+    setForm({ ...emptyProduct });
+    setError('');
+    setNotice('');
+    setFormOpen(true);
+  }
+
+  function openEditForm(product) {
+    setEditingId(product.id);
+    setForm({
+      name: product.name ?? '',
+      description: product.description ?? '',
+      price: product.price ?? '',
+      imageUrl: getProductImage(product),
+      category: product.category ?? '',
+      stock: product.stock ?? product.quantity ?? product.stockQuantity ?? '',
+    });
+    setError('');
+    setNotice('');
+    setFormOpen(true);
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingId(null);
+    setForm({ ...emptyProduct });
+  }
+
+  function handleChange(event) {
+    const { name, value } = event.target;
+    setForm((previous) => ({ ...previous, [name]: value }));
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (saving) return;
+
+    setSaving(true);
+    setError('');
+    setNotice('');
+
+    const payload = {
+      name: form.name.trim(),
+      description: form.description.trim(),
+      price: Number(form.price),
+      imageUrl: form.imageUrl.trim(),
+      category: form.category.trim(),
+      stock: Number(form.stock),
+    };
+
+    if (
+      !payload.name ||
+      !payload.description ||
+      !payload.category ||
+      !Number.isFinite(payload.price) ||
+      payload.price <= 0 ||
+      !Number.isInteger(payload.stock) ||
+      payload.stock < 0
+    ) {
+      setError('Enter a name, description, category, valid price, and non-negative whole-number stock.');
+      setSaving(false);
+      return;
+    }
+
+    try {
+      if (editingId !== null) {
+        await apiRequest(`/${encodeURIComponent(editingId)}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+        setNotice('Product updated successfully.');
+      } else {
+        await apiRequest('', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        setNotice('Product added successfully.');
+      }
+      closeForm();
+      await loadProducts();
+    } catch (err) {
+      setError(err.message || 'Unable to save product.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(product) {
+    const confirmed = window.confirm(`Delete "${product.name}"? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    setError('');
+    setNotice('');
+    try {
+      await apiRequest(`/${encodeURIComponent(product.id)}`, { method: 'DELETE' });
+      setProducts((current) => current.filter((item) => item.id !== product.id));
+      if (editingId === product.id) closeForm();
+      setNotice('Product deleted successfully.');
+    } catch (err) {
+      setError(err.message || 'Unable to delete product.');
+    }
+  }
+
+  function handleImageError(productId) {
+    setFailedImages((current) => ({ ...current, [productId]: true }));
+  }
+
   return (
-    <main className="page-shell container admin-dashboard">
-      <div className="admin-topbar">
+    <main className="page-shell admin-products-page">
+      <header className="admin-products-header">
         <div>
-          <div className="eyebrow">
-            <span className="admin-status-dot" />
-            STORE MANAGEMENT
-          </div>
-
-          <h1 className="admin-heading">Admin Dashboard</h1>
-
-          <p className="admin-subtitle">
-            Manage your inventory and keep your CloudCart store up to date.
-          </p>
+          <span className="checkout-eyebrow">CLOUDCART ADMIN</span>
+          <h1>Manage Products</h1>
+          <p>View, update, add, and remove products from your store.</p>
         </div>
+        <button type="button" className="primary-button admin-add-button" onClick={openAddForm}>
+          + Add Product
+        </button>
+      </header>
 
-        <span className="admin-badge">
-          <Warehouse size={15} />
-          Administrator
-        </span>
-      </div>
+      {error && <div className="checkout-error" role="alert">{error}</div>}
+      {notice && <div className="admin-notice" role="status">{notice}</div>}
 
-      <section className="admin-stats" aria-label="Inventory summary">
-        <article className="admin-stat-card">
-          <div className="admin-stat-icon stat-icon-green">
-            <Package size={21} />
-          </div>
-
-          <div className="admin-stat-content">
-            <span>Total products</span>
-            <strong>{fetching ? "—" : products.length}</strong>
-            <small>Products in your catalog</small>
-          </div>
-
-          <ArrowUpRight className="admin-stat-decoration" size={18} />
-        </article>
-
-        <article className="admin-stat-card">
-          <div className="admin-stat-icon stat-icon-orange">
-            <Boxes size={21} />
-          </div>
-
-          <div className="admin-stat-content">
-            <span>Low-stock products</span>
-            <strong>{fetching ? "—" : lowStockCount}</strong>
-            <small>Stock of {LOW_STOCK_LIMIT} or less</small>
-          </div>
-
-          <ArrowUpRight className="admin-stat-decoration" size={18} />
-        </article>
-
-        <article className="admin-stat-card">
-          <div className="admin-stat-icon stat-icon-cream">
-            <IndianRupee size={21} />
-          </div>
-
-          <div className="admin-stat-content">
-            <span>Inventory units</span>
-            <strong>
-              {fetching
-                ? "—"
-                : products
-                    .reduce(
-                      (total, product) => total + (Number(product.stock) || 0),
-                      0
-                    )
-                    .toLocaleString("en-IN")}
-            </strong>
-            <small>Total units in stock</small>
-          </div>
-
-          <ArrowUpRight className="admin-stat-decoration" size={18} />
-        </article>
-      </section>
-
-      {message && (
-        <div
-          className={`admin-notice ${
-            message.type === "success"
-              ? "admin-notice-success"
-              : "admin-notice-error"
-          }`}
-          role="status"
-        >
-          {message.type === "success" ? (
-            <CheckCircle2 size={19} />
-          ) : (
-            <AlertCircle size={19} />
-          )}
-
-          <span>{message.text}</span>
-
-          <button
-            type="button"
-            className="admin-notice-close"
-            onClick={() => setMessage(null)}
-            aria-label="Dismiss notification"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      <div className="admin-workspace">
-        <section className="admin-panel admin-create-panel">
-          <div className="admin-panel-heading">
-            <div className="admin-panel-icon">
-              <PackagePlus size={20} />
-            </div>
-
+      {formOpen && (
+        <section className="checkout-card admin-product-form-card">
+          <div className="admin-form-header">
             <div>
-              <h2>Add a product</h2>
-              <p>Introduce something new to your store.</p>
+              <h2>{editingId !== null ? 'Edit Product' : 'Add Product'}</h2>
+              <p>{editingId !== null ? 'Update the existing product details.' : 'Enter the details for the new product.'}</p>
             </div>
+            <button type="button" className="admin-close-button" onClick={closeForm} aria-label="Close product form">
+              X
+            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="admin-product-form">
-            <div className="admin-field">
-              <label htmlFor="name">Product name <span>*</span></label>
+            <label>
+              Product name
+              <input name="name" value={form.name} onChange={handleChange} required maxLength={150} />
+            </label>
+
+            <label>
+              Description
+              <textarea name="description" value={form.description} onChange={handleChange} required rows={3} />
+            </label>
+
+            <div className="admin-form-grid">
+              <label>
+                Price (INR)
+                <input name="price" type="number" value={form.price} onChange={handleChange} min="0.01" step="0.01" required />
+              </label>
+              <label>
+                Stock quantity
+                <input name="stock" type="number" value={form.stock} onChange={handleChange} min="0" step="1" required />
+              </label>
+            </div>
+
+            <label>
+              Category
+              <input name="category" value={form.category} onChange={handleChange} required />
+            </label>
+
+            <label>
+              Image URL
               <input
-                id="name"
-                name="name"
-                value={form.name}
+                name="imageUrl"
+                type="url"
+                value={form.imageUrl}
                 onChange={handleChange}
-                required
-                maxLength={200}
-                placeholder="e.g. Wireless Headphones"
+                placeholder="https://example.com/product.jpg"
               />
-            </div>
+            </label>
 
-            <div className="admin-field">
-              <label htmlFor="description">Description</label>
-              <textarea
-                id="description"
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                maxLength={2000}
-                rows={4}
-                placeholder="Describe the product and its features..."
-              />
-            </div>
-
-            <div className="admin-form-row">
-              <div className="admin-field">
-                <label htmlFor="price">Price <span>*</span></label>
-
-                <div className="admin-input-with-prefix">
-                  <span>₹</span>
-                  <input
-                    id="price"
-                    name="price"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={form.price}
-                    onChange={handleChange}
-                    required
-                    placeholder="999.00"
-                  />
-                </div>
-              </div>
-
-              <div className="admin-field">
-                <label htmlFor="stock">Stock quantity <span>*</span></label>
-                <input
-                  id="stock"
-                  name="stock"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={form.stock}
-                  onChange={handleChange}
-                  required
-                  placeholder="25"
+            {form.imageUrl.trim() && (
+              <div className="admin-image-preview">
+                <p>Product image preview</p>
+                <img
+                  key={form.imageUrl.trim()}
+                  src={form.imageUrl.trim()}
+                  alt="Product preview"
+                  onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                  onLoad={(event) => { event.currentTarget.style.display = 'block'; }}
                 />
               </div>
-            </div>
+            )}
 
-            <div className="admin-form-hint">
-              <span>*</span> Required fields
+            <div className="admin-form-actions">
+              <button type="submit" className="primary-button" disabled={saving}>
+                {saving ? 'Saving...' : editingId !== null ? 'Update Product' : 'Save Product'}
+              </button>
+              <button type="button" className="admin-cancel-button" onClick={closeForm} disabled={saving}>
+                Cancel
+              </button>
             </div>
-
-            <button
-              type="submit"
-              className="admin-submit-button"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="admin-spin" size={17} />
-                  Adding product...
-                </>
-              ) : (
-                <>
-                  <Plus size={18} />
-                  Add product
-                </>
-              )}
-            </button>
           </form>
         </section>
+      )}
 
-        <section className="admin-panel admin-inventory-panel">
-          <div className="admin-inventory-heading">
-            <div>
-              <h2>Product inventory</h2>
-              <p>View and search your existing products.</p>
-            </div>
+      <section className="admin-products-section">
+        <div className="admin-products-section-heading">
+          <h2>Existing Products</h2>
+          <span>{products.length} products</span>
+        </div>
 
-            <button
-              type="button"
-              className="admin-refresh-button"
-              onClick={loadProducts}
-              disabled={fetching}
-              aria-label="Refresh product inventory"
-              title="Refresh inventory"
-            >
-              <RefreshCw
-                size={17}
-                className={fetching ? "admin-spin" : ""}
-              />
-            </button>
+        {loading ? (
+          <p className="order-loading">Loading products...</p>
+        ) : products.length === 0 ? (
+          <div className="checkout-card order-empty">
+            <h3>No products found</h3>
+            <p>Click Add Product to create your first product.</p>
           </div>
-
-          <div className="admin-inventory-tools">
-            <div className="admin-search">
-              <Search size={17} />
-              <input
-                type="search"
-                aria-label="Search products"
-                placeholder="Search products..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-
-            <span className="admin-result-count">
-              {fetching ? "Loading..." : `${filteredProducts.length} items`}
-            </span>
-          </div>
-
-          <div className="admin-table-wrap">
-            <table className="admin-table">
+        ) : (
+          <div className="admin-products-table-wrap">
+            <table className="admin-products-table">
               <thead>
-                <tr>
-                  <th>Product</th>
-                  <th>Price</th>
-                  <th>Stock</th>
-                  <th>Status</th>
-                </tr>
+                <tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th></tr>
               </thead>
-
               <tbody>
-                {!fetching && filteredProducts.length === 0 && (
-                  <tr>
-                    <td colSpan={4}>
-                      <div className="admin-empty-state">
-                        <Package size={29} />
-                        <strong>
-                          {search ? "No matching products" : "No products yet"}
-                        </strong>
-                        <span>
-                          {search
-                            ? "Try a different search term."
-                            : "Add your first product using the form."}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-
-                {filteredProducts.map((product) => {
-                  const stock = Number(product.stock) || 0;
-                  const isLowStock = stock <= LOW_STOCK_LIMIT;
-
+                {products.map((product) => {
+                  const imageUrl = getProductImage(product);
                   return (
                     <tr key={product.id}>
                       <td>
-                        <div className="admin-product-cell">
-                          <div className="admin-product-icon">
-                            <Package size={18} />
-                          </div>
-
-                          <div className="admin-product-name">
-                            <strong>{product.name}</strong>
-                            <span>
-                              {product.description || `Product #${product.id}`}
-                            </span>
-                          </div>
+                        <div className="admin-product-name">
+                          {imageUrl && !failedImages[product.id] ? (
+                            <img src={imageUrl} alt={product.name} onError={() => handleImageError(product.id)} />
+                          ) : (
+                            <div className="admin-product-placeholder">📦</div>
+                          )}
+                          <div><strong>{product.name}</strong><p>#{product.id}</p></div>
                         </div>
                       </td>
-
-                      <td className="admin-price-cell">
-                        {formatPrice(product.price)}
-                      </td>
-
-                      <td>{stock}</td>
-
+                      <td>{product.category || '-'}</td>
                       <td>
-                        <span
-                          className={`admin-stock-badge ${
-                            isLowStock ? "is-low-stock" : "is-in-stock"
-                          }`}
-                        >
-                          <span />
-                          {stock === 0
-                            ? "Out of stock"
-                            : isLowStock
-                              ? "Low stock"
-                              : "In stock"}
-                        </span>
+                        {new Intl.NumberFormat('en-IN', {
+                          style: 'currency',
+                          currency: 'INR',
+                          maximumFractionDigits: 2,
+                        }).format(Number(product.price || 0))}
+                      </td>
+                      <td>{product.stock ?? product.quantity ?? product.stockQuantity ?? '-'}</td>
+                      <td>
+                        <div className="admin-product-actions">
+                          <button type="button" className="admin-edit-button" onClick={() => openEditForm(product)}>Edit</button>
+                          <button type="button" className="admin-delete-button" onClick={() => handleDelete(product)}>Delete</button>
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
-
-                {fetching && products.length === 0 && (
-                  <tr>
-                    <td colSpan={4}>
-                      <div className="admin-empty-state">
-                        <RefreshCw className="admin-spin" size={24} />
-                        <span>Loading product inventory...</span>
-                      </div>
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
-
-          <div className="admin-inventory-footer">
-            <span>
-              <span className="admin-status-dot" />
-              Connected to Product Service
-            </span>
-            <span>Updates after successful product creation</span>
-          </div>
-        </section>
-      </div>
+        )}
+      </section>
     </main>
   );
 }
