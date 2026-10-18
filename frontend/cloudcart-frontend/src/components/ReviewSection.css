@@ -1,0 +1,140 @@
+
+.review-section {
+  margin-top: 16px;
+  padding: 16px;
+  border-top: 1px solid #e5e7eb;
+  color: #1f2937;
+}
+
+.review-section h3,
+.review-section h4 {
+  margin: 0 0 12px;
+}
+
+.review-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  color: #6b7280;
+}
+
+.review-average {
+  color: #d97706;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-bottom: 22px;
+}
+
+.review-form select,
+.review-form textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.review-form textarea {
+  resize: vertical;
+}
+
+.review-form button {
+  padding: 11px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.review-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.review-item {
+  padding: 12px 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.review-item-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #d97706;
+}
+
+.review-item-heading span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.review-item p {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.review-error {
+  color: #dc2626;
+}
+
+.review-success {
+  color: #15803d;
+}
+
+.product-reviews {
+  margin-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.product-reviews > summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  list-style-position: inside;
+}
+
+.product-reviews[open] > summary {
+  color: #2563eb;
+}
+
+.product-reviews .review-section {
+  padding: 10px 0;
+}
+
+.review-error {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.review-success {
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
