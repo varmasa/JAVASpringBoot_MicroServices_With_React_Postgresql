@@ -12,6 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import com.orderservice.orderservice.dto.PaymentOrderResponse;
+import com.orderservice.orderservice.dto.OrderPaymentVerificationRequest;
+
 import java.util.List;
 
 @RestController
@@ -37,6 +40,30 @@ public class OrderController {
 
         return ResponseEntity.status(HttpStatus.CREATED).body(order);
     }
+
+@PostMapping("/{id}/payment")
+public ResponseEntity<PaymentOrderResponse> createPayment(
+        @PathVariable Long id,
+        Authentication authentication) {
+
+    return ResponseEntity.ok(
+        orderService.createPaymentOrder(
+            id, authentication.getName()
+        )
+    );
+}
+
+@PostMapping("/payment/verify")
+public ResponseEntity<CreateOrderResponse> verifyPayment(
+        @Valid @RequestBody OrderPaymentVerificationRequest request,
+        Authentication authentication) {
+
+    return ResponseEntity.ok(
+        orderService.verifyOrderPayment(
+            request, authentication.getName()
+        )
+    );
+}
 
     @GetMapping
     public List<CreateOrderResponse> getMyOrders(
