@@ -1,7 +1,7 @@
-
 package com.cloudcart.auth.config;
 
 import com.cloudcart.auth.security.JwtAuthenticationFilter;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -32,58 +32,84 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    
-@Bean
-public SecurityFilterChain securityFilterChain(
-        HttpSecurity http
-) throws Exception {
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
 
-    http
-        .csrf(csrf -> csrf.disable())
-        .cors(Customizer.withDefaults())
-        .formLogin(form -> form.disable())
-        .httpBasic(basic -> basic.disable())
-        .sessionManagement(session -> session
-            .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-        )
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers(
-                HttpMethod.OPTIONS, "/**"
-            ).permitAll()
-            .requestMatchers(
-                HttpMethod.POST,
-                "/api/auth/signup",
-                "/api/auth/signin"
-            ).permitAll()
-            .requestMatchers(
-                HttpMethod.GET, "/api/auth/me"
-            ).authenticated()
-            .anyRequest().denyAll()
-        )
-        .addFilterBefore(
-            jwtFilter,
-            UsernamePasswordAuthenticationFilter.class
-        );
+        http
+            .csrf(csrf -> csrf.disable())
+            .cors(Customizer.withDefaults())
+            .formLogin(form -> form.disable())
+            .httpBasic(basic -> basic.disable())
 
-    return http.build();
-}
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(
+                    SessionCreationPolicy.STATELESS
+                )
+            )
+
+            .authorizeHttpRequests(auth -> auth
+
+                // Allow preflight requests
+                .requestMatchers(
+                    HttpMethod.OPTIONS, "/**"
+                ).permitAll()
+
+                // Allow AWS ALB health checks
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/actuator/health",
+                    "/actuator/health/**"
+                ).permitAll()
+
+                // Public authentication endpoints
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/auth/signup",
+                    "/api/auth/signin"
+                ).permitAll()
+
+                // Protected user endpoint
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/auth/me"
+                ).authenticated()
+
+                // Deny everything else
+                .anyRequest().denyAll()
+            )
+
+            .addFilterBefore(
+                jwtFilter,
+                UsernamePasswordAuthenticationFilter.class
+            );
+
+        return http.build();
+    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+
         CorsConfiguration config = new CorsConfiguration();
+
         config.setAllowedOrigins(
-            List.of("http://localhost:5173")
+            List.of("https://thepetclinic.xyz")
         );
+
         config.setAllowedMethods(
             List.of("GET", "POST", "OPTIONS")
         );
+
         config.setAllowedHeaders(
             List.of("Authorization", "Content-Type")
         );
 
         UrlBasedCorsConfigurationSource source =
             new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 }

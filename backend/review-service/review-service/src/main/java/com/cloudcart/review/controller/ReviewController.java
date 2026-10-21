@@ -18,7 +18,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/reviews")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "https://thepetclinic.xyz")
 public class ReviewController {
 
     private final ReviewService reviewService;

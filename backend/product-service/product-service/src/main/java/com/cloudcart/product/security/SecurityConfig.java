@@ -1,3 +1,4 @@
+
 package com.cloudcart.product.security;
 
 import org.springframework.context.annotation.Bean;
@@ -34,28 +35,43 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-            
-.authorizeHttpRequests(auth -> auth
-    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+            .authorizeHttpRequests(auth -> auth
 
-    // Public product browsing
-    .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                // Allow preflight requests
+                .requestMatchers(
+                    HttpMethod.OPTIONS, "/**"
+                ).permitAll()
 
-    // Only ADMIN can create products
-    .requestMatchers(HttpMethod.POST, "/api/products/**")
-        .hasRole("ADMIN")
+                // Allow AWS ALB health checks
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/actuator/health",
+                    "/actuator/health/**"
+                ).permitAll()
 
-    // Only ADMIN can update products
-    .requestMatchers(HttpMethod.PUT, "/api/products/**")
-        .hasRole("ADMIN")
+                // Public product browsing
+                .requestMatchers(
+                    HttpMethod.GET, "/api/products/**"
+                ).permitAll()
 
-    // Only ADMIN can delete products
-    .requestMatchers(HttpMethod.DELETE, "/api/products/**")
-        .hasRole("ADMIN")
+                // Only ADMIN can create products
+                .requestMatchers(
+                    HttpMethod.POST, "/api/products/**"
+                ).hasRole("ADMIN")
 
-    .anyRequest().authenticated()
-)
+                // Only ADMIN can update products
+                .requestMatchers(
+                    HttpMethod.PUT, "/api/products/**"
+                ).hasRole("ADMIN")
 
+                // Only ADMIN can delete products
+                .requestMatchers(
+                    HttpMethod.DELETE, "/api/products/**"
+                ).hasRole("ADMIN")
+
+                // Other endpoints require authentication
+                .anyRequest().authenticated()
+            )
             .addFilterBefore(
                 jwtFilter,
                 UsernamePasswordAuthenticationFilter.class
@@ -66,12 +82,17 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(
+            List.of("https://thepetclinic.xyz")
+        );
+
         config.setAllowedMethods(
             List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
         );
+
         config.setAllowedHeaders(
             List.of("Authorization", "Content-Type")
         );
@@ -80,6 +101,8 @@ public class SecurityConfig {
             new UrlBasedCorsConfigurationSource();
 
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 }
+
