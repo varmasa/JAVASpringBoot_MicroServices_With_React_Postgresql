@@ -1,4 +1,7 @@
-const ORDER_API = 'http://localhost:8084/api/orders';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const ORDER_API = `${API_BASE_URL}/api/orders`;
+
+export default ORDER_API;
 
 function getToken() {
   return localStorage.getItem('cloudcart_token');

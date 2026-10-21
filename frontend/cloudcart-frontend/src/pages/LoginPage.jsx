@@ -2,6 +2,9 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const AUTH_API = `${API_BASE_URL}/api/auth`;
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -17,16 +20,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:8083/api/auth/signin",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password }),
-        }
-      );
+      const response = await fetch(`${AUTH_API}/signin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
       let data = {};
 
@@ -51,7 +51,9 @@ export default function LoginPage() {
       }
 
       if (!data.token) {
-        throw new Error("Login succeeded, but no token was returned.");
+        throw new Error(
+          "Login succeeded, but no token was returned."
+        );
       }
 
       // Save JWT
@@ -71,12 +73,14 @@ export default function LoginPage() {
       // Notify Header to update the profile immediately
       window.dispatchEvent(new Event("cloudcart-auth-change"));
 
-      // Return to the originally requested page, or the shop
+      // Return to the requested page, or the shop
       navigate(location.state?.from?.pathname || "/", {
         replace: true,
       });
     } catch (err) {
-      setError(err.message || "Cannot connect to the backend.");
+      setError(
+        err.message || "Cannot connect to the backend."
+      );
     } finally {
       setLoading(false);
     }
@@ -89,7 +93,9 @@ export default function LoginPage() {
         <p>Login to your CloudCart account</p>
 
         {location.state?.message && (
-          <p className="auth-success">{location.state.message}</p>
+          <p className="auth-success">
+            {location.state.message}
+          </p>
         )}
 
         {error && <p className="auth-error">{error}</p>}

@@ -1,7 +1,5 @@
-
-const REVIEW_API =
-  import.meta.env.VITE_REVIEW_API_URL ||
-  "http://localhost:8085/api/reviews";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const REVIEW_API = `${API_BASE_URL}/api/reviews`;
 
 function getToken() {
   return localStorage.getItem("cloudcart_token");

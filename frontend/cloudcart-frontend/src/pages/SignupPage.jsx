@@ -1,9 +1,12 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const AUTH_API = `${API_BASE_URL}/api/auth`;
+
 export default function SignupPage() {
   const navigate = useNavigate();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,26 +25,39 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:8083/api/auth/signup",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password }),
-        }
-      );
+      const response = await fetch(`${AUTH_API}/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
+      });
 
-      const data = await response.json();
+      let data = {};
+
+      try {
+        data = await response.json();
+      } catch {
+        // The backend may return an empty response.
+      }
 
       if (!response.ok) {
-        throw new Error(data.message || "Signup failed.");
+        throw new Error(
+          data.message ||
+            data.error ||
+            `Signup failed (${response.status}).`
+        );
       }
 
       navigate("/login", {
-        state: { message: "Account created! Please log in." },
+        state: {
+          message: "Account created! Please log in.",
+        },
       });
     } catch (err) {
-      setError(err.message || "Cannot connect to the backend.");
+      setError(
+        err.message || "Cannot connect to the backend."
+      );
     } finally {
       setLoading(false);
     }
@@ -95,9 +111,13 @@ export default function SignupPage() {
         </button>
 
         <p className="auth-switch">
-          Already have an account? <Link to="/login">Login</Link>
+          Already have an account?{" "}
+          <Link to="/login">Login</Link>
         </p>
-        <Link className="auth-back" to="/">← Back to Shop</Link>
+
+        <Link className="auth-back" to="/">
+          ← Back to Shop
+        </Link>
       </form>
     </main>
   );

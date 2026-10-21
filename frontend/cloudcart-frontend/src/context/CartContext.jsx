@@ -9,8 +9,10 @@ import {
 
 const CartContext = createContext(null);
 
-const CART_API = 'http://localhost:8082/api/cart';
-const PRODUCT_API = 'http://localhost:8081/api/products';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+const CART_API = `${API_BASE_URL}/api/cart`;
+const PRODUCT_API = `${API_BASE_URL}/api/products`;
 
 
 
