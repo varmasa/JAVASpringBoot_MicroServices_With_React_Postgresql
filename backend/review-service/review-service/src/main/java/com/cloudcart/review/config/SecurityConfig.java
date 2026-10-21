@@ -42,6 +42,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**")
                 .permitAll()
 
+                // Public health check for AWS ALB / ECS
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/actuator/health",
+                    "/actuator/health/**"
+                ).permitAll()
+
                 // Anyone can view reviews and summaries
                 .requestMatchers(
                     HttpMethod.GET,
@@ -76,6 +83,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/reviews/**")
                 .authenticated()
 
+                // Preserve existing access behavior
                 .anyRequest().permitAll()
             )
 
@@ -87,3 +95,4 @@ public class SecurityConfig {
         return http.build();
     }
 }
+
